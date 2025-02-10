@@ -1,0 +1,34 @@
+title: Unusual or Suspicious Process Ancestry in Command Shell Execution
+id: 28b82ed6-879b-4e56-8b1e-7476d4c184dc
+status: experimental
+description: Detects anomalous process relationships where the Windows IIS worker process (w3wp.exe) spawns or interacts with the command shell, a behavior that may indicate exploitation or unauthorized execution. This detection method is informed by real-world threat intelligence reports, including insights from 2022.
+references:
+    - https://redcanary.com/threat-detection-report/techniques/windows-command-shell/
+author: BlackPerl
+date: 2024-12-15
+tags:
+    - attack.persistence
+    - attack.t1505
+    - attack.execution
+    - attack.t1059.003
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_process:
+        Image|endswith: '\cmd.exe'
+        ParentImage|endswith:
+            - '\w3wp.exe'
+            - '\wmiprvse.exe'
+    selection_cmdline:
+        - CommandLine|contains:
+                - 'http://'
+                - 'https://'
+                - 'echo'
+        - CommandLine|contains|all:
+                - '/c'
+                - 'powershell.exe'
+    condition: selection_process and selection_cmdline
+falsepositives:
+    - Unknown
+level: high

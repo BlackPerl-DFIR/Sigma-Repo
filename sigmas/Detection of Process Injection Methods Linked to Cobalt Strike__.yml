@@ -1,0 +1,26 @@
+title: Detection of Process Injection Methods Linked to Cobalt Strike
+id: b875a203-5007-46e1-b7bc-0c00eaba3e39
+status: experimental
+description: Monitors for process injection techniques commonly leveraged by Cobalt Strike Beacon to execute code within another process's context. Observed methods include ntdll:RtlUserThreadStart, CreateThread, NtQueueApcThread, CreateRemoteThread, and RtlCreateUserThread.
+references:
+  - https://www.cisa.gov/news-events/analysis-reports/ar21-148a
+author: BlackPerl
+date: 2024-12-15
+tags:
+  - attack.defense-evasion
+  - attack.t1055
+logsource:
+  product: windows
+  category: create_remote_thread
+detection:
+  selection:
+    StartFunction|contains|all:
+      - ntdll:RtlUserThreadStart
+      - CreateRemoteThread
+      - RtlCreateUserThread
+      - NtQueueApcThread-s
+      - CreateThread
+  condition: selection
+falsepositives:
+  - Legitimate software that uses similar process injection techniques for non-malicious purposes
+level: high

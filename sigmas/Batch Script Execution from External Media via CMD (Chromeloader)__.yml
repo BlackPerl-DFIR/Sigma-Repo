@@ -1,0 +1,39 @@
+title: Batch Script Execution from External Media via CMD (Chromeloader)
+id: 35353b86-a558-4df8-88b5-f5ed74eaa9d0
+status: experimental
+description: Monitors for cases where CMD initiates the execution of a batch script residing on an externally mounted drive, potentially leading to a subsequent tar extraction process. This behavior can be indicative of malicious activities such as those associated with Chromeloader.
+references:
+    - https://blogs.vmware.com/security/2022/09/the-evolution-of-the-chromeloader-malware.html
+author: BlackPerl
+date: 2024-12-15
+tags:
+    - attack.defense_evasion
+    - attack.t1553
+    - attack.t1553.005
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_parent:
+        ParentImage|endswith:
+            - '\powershell.exe'
+            - '\cmd.exe'
+        ParentCommandLine|contains|windash: '/c'
+        ParentCommandLine|re: '^.*[D-Z]:\\.*\.(bat|cmdline).*$'
+    selection_child_proc:
+        Image|endswith: '\tar.exe'
+    selection_extract_options:
+        CommandLine|contains:
+            - '-xvf'
+            - '-xfv'
+            - '-vxf'
+            - '-vfx'
+            - '-fxv'
+            - '-fvx'
+    selection_output_options:
+        CommandLine|contains: '-c'
+        CommandLine|contains: 'appdata\'
+    condition: all of selection*
+falsepositives:
+    - Unknown
+level: high

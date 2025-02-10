@@ -1,0 +1,21 @@
+title: Detection of Process Injection via CreateRemoteThread
+id: 2e412eb2-c7d6-407e-98ec-95ba4e07a86a
+status: experimental
+description: Identifies the use of CreateRemoteThread for process injection, a technique frequently observed in Cobalt Strike operations and other malicious activities aimed at executing unauthorized code within remote processes.
+references:
+  - https://thedfirreport.com/2021/08/29/cobalt-strike-a-defenders-guide
+author: BlackPerl
+date: 2024-12-15
+tags:
+  - attack.defense-evasion
+logsource:
+  product: windows
+  category: create_remote_thread
+detection:
+  selection:
+    SourceImage|endswith: \rundll32.exe
+    TargetImage|endswith: \svchost.exe
+  condition: selection
+falsepositives:
+  - Legitimate use of CreateRemoteThread by trusted applications
+level: high
