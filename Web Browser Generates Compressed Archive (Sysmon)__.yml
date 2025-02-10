@@ -1,0 +1,45 @@
+title: Web Browser Generates Compressed Archive (Sysmon)
+id: b8e01013-eabb-4f73-ac32-fb1b22d0f487
+status: experimental
+description: Identifies instances where web browsers generate compressed archive files (e.g., ZIP, RAR, 7z), a behavior often linked to HTML smuggling techniques leveraged by various malware families, including those similar to QakBot and IcedID.
+references:
+    - https://blog.talosintelligence.com/html-smugglers-turn-to-svg-images/
+    - https://www.malwarebytes.com/blog/news/2021/11/evasive-maneuvers-html-smuggling-explained
+author: BlackPerl
+date: 2024-12-15
+tags:
+    - attack.s0650
+    - attack.s0483
+    - attack.defense_evasion
+    - attack.t1027
+    - attack.t1027.006
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image|endswith: 
+            - '\chrome.exe'
+            - '\brave.exe'
+            - '\firefox.exe'
+            - '\iexplore.exe'
+            - '\msedge.exe'
+            - '\MicrosoftEdgeCP.exe'
+        Contents|contains: '[ZoneTransfer]  ZoneId=3'
+        TargetFilename|contains:
+            - '.zip'
+            - '.rar'
+            - '.7z'
+            - '.iso'
+            - '.exe'
+    filter_parents:
+        ParentImage|endswith:
+            - '\cmd.exe'
+            - '\powershell.exe'
+            - '\wscript.exe'
+            - '\cscript.exe'
+    condition: selection and not filter_parents
+falsepositives:
+    - Legitimate downloads of compressed files via trusted websites.
+    - Browser updates creating archive files for temporary storage.
+level: high

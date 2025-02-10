@@ -1,0 +1,25 @@
+title: Detection of Obfuscated Commands in Windows Command Shell
+id: 982c39a6-f4d5-4255-afaa-d2a98e5bf2a3
+status: experimental
+description: Identifies instances where the Windows Command Shell executes commands with an abnormally high level of character obfuscation, a technique commonly used to evade detection. This detection approach is informed by patterns observed in real-world threat intelligence reports, including those from 2022.
+references:
+    - https://redcanary.com/threat-detection-report/techniques/windows-command-shell/
+author: BlackPerl
+date: 2024-12-15
+tags:
+    - attack.execution
+    - attack.t1059.003
+    - attack.defense_evasion
+    - attack.t1027
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    condition: selection
+    selection:
+        Image|endswith: '\cmd.exe'
+        # regex below looks for eight or more total instances of the suspicious characters
+        CommandLine|re: '^([^^=%![(; ]*[\^=%![(; ]){8,}[^^=%![(; ]*$'
+falsepositives:
+    - Legitimate processes with long or convoluted command lines.
+level: high

@@ -1,0 +1,27 @@
+title: Detection of Process Termination Linked to DarkSide Ransomware
+id: fbe8ab5d-d7fa-401b-a6e8-444a2f9153f1
+status: experimental
+description: Detects the abrupt termination of processes associated with database and office applications, a behavior commonly observed in DarkSide ransomware attacks.
+references:
+  - https://www.splunk.com/en_us/blog/security/darkside-ransomware-splunk-threat-update-and-detections.html
+author: BlackPerl
+date: 2024-12-15
+tags:
+  - attack.impact
+logsource:
+  product: windows
+  category: process_termination
+detection:
+  selection:
+    Image|contains:
+      - notepad
+      - excel
+      - winword
+      - sqlcoreservice
+      - outlook
+      - powerpnt
+      - oracle
+  condition: selection
+falsepositives:
+  - Legitimate administrative activity that involves stopping office or database processes.
+level: high

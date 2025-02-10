@@ -1,0 +1,24 @@
+title: Evasion Techniques via Windows Command Shell
+id: 4491e5cf-501c-476c-b85a-8433b9817e6c
+status: experimental
+description: Identifies techniques used to circumvent security controls through the Windows Command Shell, highlighting methods observed in real-world attack scenarios. This detection is inspired by patterns analyzed in threat intelligence reports, including those from 2022.
+references:
+    - https://redcanary.com/threat-detection-report/techniques/windows-command-shell/
+author: BlackPerl
+date: 2024-12-15
+tags:
+    - attack.execution
+    - attack.t1059.003
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image|endswith: '\cmd.exe'
+        CommandLine|contains|windash:
+            - 'bypass'
+            - '-exec'
+    condition: selection
+falsepositives:
+    - Unknown
+level: high

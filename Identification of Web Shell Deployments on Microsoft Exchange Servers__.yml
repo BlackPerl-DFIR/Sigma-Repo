@@ -1,0 +1,33 @@
+title: Identification of Web Shell Deployments on Microsoft Exchange Servers
+id: a10f8614-f090-4871-a328-69111722f4b6
+status: experimental
+description: Detects the presence of web shells on Microsoft Exchange servers, a strong indicator of potential compromise. This detection specifically focuses on known variants such as China Chopper and ASPXSPY, which are commonly leveraged in exploitation attempts.
+references:
+  - https://www.security.com/threat-intelligence/microsoft-exchange-server-protection
+author: BlackPerl
+date: 2024-12-15
+tags:
+  - attack.persistence
+  - attack.t1505.003
+logsource:
+  product: windows
+  service: iis
+detection:
+  selection:
+    cs-method|contains:
+      - GET
+      - POST
+    cs-uri-stem|contains:
+      - aspxspy
+      - chopper
+    cs-uri-query|contains|all:
+      - cmd=
+      - exec
+    cs-uri-stem|endswith:
+      - .asp
+      - .aspx
+  condition: selection
+falsepositives:
+  - Legitimate administrative activity that uses query parameters in URLs to execute commands on the server.
+  - Developers testing or deploying web applications on the server.
+level: high

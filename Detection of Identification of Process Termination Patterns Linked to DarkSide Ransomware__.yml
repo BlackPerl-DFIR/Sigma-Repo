@@ -1,0 +1,26 @@
+title: Detection of Identification of Process Termination Patterns Linked to DarkSide Ransomware
+id: ceb126ec-1d4e-43c6-a2ae-cdc982ae5f5c
+status: experimental
+description: Detects attempts to forcibly stop specific processes, a tactic associated with DarkSide ransomware. This behavior was notably observed in the Colonial Pipeline attack.
+references:
+  - https://www.metabaseq.com/threat/inside-darkside-the-ransomware-that-attacked-colonial-pipeline
+author: BlackPerl
+date: 2024-12-15
+tags:
+  - attack.defense-evasion
+logsource:
+  product: windows
+  category: process_termination
+detection:
+  selection:
+    Image|endswith:
+      - \\vmms.exe
+      - \\svchost.exe
+      - \\vmcompute.exe
+      - \\TeamViewer.exe
+      - \\vmwp.exe
+      - \\explorer.exe
+  condition: selection
+falsepositives:
+  - Legitimate administrative activities that intentionally stop these processes.
+level: high
