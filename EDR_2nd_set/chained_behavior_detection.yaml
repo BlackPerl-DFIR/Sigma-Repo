@@ -1,0 +1,71 @@
+title: Chained Behavior Detection (LNK File → File Drop → Network Activity)
+id: d8a621f3-4c5e-4f7e-a9b1-3d4878e4b4c1
+status: experimental
+description: Detects a chained attack sequence where an LNK file leads to file dropping and subsequent network activity, commonly observed in malware delivery mechanisms.
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.execution
+  - attack.persistence
+  - attack.command-and-control
+  - attack.t1204.002
+  - attack.t1566.002
+  - attack.t1059.003
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  # LNK File Execution - Initial Access via LNK (Shortcut) File
+  selection_lnk_execution:
+    EventID: 4688  # Process Creation Event
+    NewProcessName|endswith:
+      - "cmd.exe"
+      - "powershell.exe"
+      - "wscript.exe"
+      - "cscript.exe"
+      - "rundll32.exe"
+      - "mshta.exe"
+    ParentImage|endswith:
+      - ".lnk"
+  # Suspicious File Drop - Executable or Script Dropped in User Writable Directories
+  selection_file_drop:
+    EventID: 11  # Sysmon File Creation Event
+    TargetFilename|contains:
+      - "C:\\Users\\Public\\"
+      - "C:\\ProgramData\\"
+      - "C:\\Windows\\Temp\\"
+      - "C:\\Users\\*\\AppData\\Local\\Temp\\"
+    TargetFilename|endswith:
+      - ".exe"
+      - ".dll"
+      - ".bat"
+      - ".vbs"
+      - ".ps1"
+      - ".js"
+  # Network Activity - C2 or Malicious Command Execution
+  selection_network_activity:
+    EventID: 3  # Sysmon Network Connection Event
+    DestinationPort:
+      - 443
+      - 80
+      - 8080
+      - 8443
+      - 53
+    DestinationHostname|re:
+      - ".*\.onion"
+      - ".*\.ru"
+      - ".*\.top"
+      - ".*\.xyz"
+      - ".*\.cn"
+    Image|endswith:
+      - "powershell.exe"
+      - "cmd.exe"
+      - "rundll32.exe"
+      - "mshta.exe"
+      - "wscript.exe"
+      - "cscript.exe"
+      - "svchost.exe"
+  condition: selection_lnk_execution and selection_file_drop and selection_network_activity
+falsepositives:
+  - Legitimate LNK file usage triggering PowerShell, though rare in corporate environments.
+level: high
