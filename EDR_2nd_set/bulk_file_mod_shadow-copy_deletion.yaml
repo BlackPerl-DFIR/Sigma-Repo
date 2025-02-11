@@ -1,0 +1,105 @@
+title: Advanced Bulk File Modification & Shadow Copy Deletion Detection
+id: f67b2e90-4b89-402e-b3f2-6df4f52d7d5f
+status: experimental
+description: Detects bulk file modifications over a short period, shadow copy deletion, service tampering, and backup destruction—key indicators of ransomware behavior.
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.impact
+  - attack.execution
+  - attack.persistence
+  - attack.t1486
+  - attack.t1490
+  - attack.t1562.001
+logsource:
+  category: file_event
+  product: windows
+detection:
+  # Bulk File Modification (Ransomware Encryption Behavior)
+  selection_bulk_modification:
+    EventID: 4663  # Windows Security Event for file modification
+    ObjectType: "File"
+    AccessMask: "0x2"  # FILE_WRITE_DATA
+    TargetFilename|endswith:
+      - ".docx"
+      - ".xlsx"
+      - ".pptx"
+      - ".pdf"
+      - ".txt"
+      - ".csv"
+      - ".jpg"
+      - ".png"
+      - ".mp4"
+      - ".zip"
+      - ".rar"
+  
+  # Shadow Copy Deletion via Built-in Windows Binaries
+  selection_shadow_copy_deletion:
+    EventID: 4688  # Process Creation Event
+    NewProcessName|endswith:
+      - "vssadmin.exe"
+      - "wmic.exe"
+      - "powershell.exe"
+      - "cmd.exe"
+    CommandLine|contains:
+      - "delete shadows"
+      - "shadowcopy delete"
+      - "shadowcopy delete /all /quiet"
+      - "shadowcopy delete /nointeractive"
+      - "delete volume shadow copies"
+      - "wmic shadowcopy call delete"
+      - "Disable-ComputerRestore"
+
+  # Detection of Service Tampering (Stopping Backup & Security Services)
+  selection_service_tampering:
+    EventID: 7036  # Service Stopped
+    ServiceName:
+      - "VSS"
+      - "wbengine"
+      - "defragsvc"
+      - "backup"
+      - "wuauserv"
+      - "BITS"
+    Message|contains:
+      - "service entered the stopped state"
+
+  # Registry Modifications Disabling Backups & Security
+  selection_registry_backup_disable:
+    EventID: 4657  # Registry Value Modification
+    ObjectName|contains:
+      - "HKLM\\SYSTEM\\CurrentControlSet\\Services\\VSS"
+      - "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore"
+    NewValue|contains:
+      - "DisableSR"  # System Restore Disabled
+      - "DisableConfig"
+      - "DisableBackup"
+
+  # PowerShell & CMD Execution to Disable Security Features
+  selection_powershell_security_disable:
+    EventID: 4688
+    NewProcessName|endswith:
+      - "powershell.exe"
+      - "cmd.exe"
+    CommandLine|contains:
+      - "Set-MpPreference -DisableRealtimeMonitoring $true"
+      - "Set-MpPreference -DisableBehaviorMonitoring $true"
+      - "Set-MpPreference -DisableIOAVProtection $true"
+      - "Remove-ItemProperty -Path HKLM:\\Software\\Microsoft\\Windows Defender"
+
+  # Process Injection Attempts in Backup-Related Services
+  selection_process_injection:
+    EventID: 8  # Sysmon Process Injection
+    TargetImage|endswith:
+      - "svchost.exe"
+      - "explorer.exe"
+      - "lsass.exe"
+    CallTrace|contains:
+      - "CreateRemoteThread"
+      - "VirtualAllocEx"
+      - "NtQueueApcThread"
+      - "WriteProcessMemory"
+  condition: selection_bulk_modification or selection_shadow_copy_deletion or selection_service_tampering or selection_registry_backup_disable or selection_powershell_security_disable or selection_process_injection
+falsepositives:
+  - IT administrators modifying services or registry settings for maintenance
+  - Backup software executing similar operations
+level: critical
