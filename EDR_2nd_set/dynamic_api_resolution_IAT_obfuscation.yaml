@@ -1,0 +1,111 @@
+title: Detecting Dynamic API Resolution & IAT Obfuscation
+id: a2359cb0-2f0b-484d-bd13-95077b5400db
+status: experimental
+description: Detects suspicious API resolution bypassing IAT by dynamically loading DLLs and functions at runtime using LoadLibrary and GetProcAddress.
+references:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://redcanary.com/threat-detection-report/
+  - https://github.com/jthuraisamy/SysWhispers
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.defense-evasion
+  - attack.execution
+  - attack.t1027.002
+  - attack.t1055.001
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_processes:
+    Image|endswith:
+      - '\rundll32.exe'
+      - '\regsvr32.exe'
+      - '\powershell.exe'
+      - '\cmd.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\svchost.exe'
+      - '\lsass.exe'
+  selection_dynamic_api_loading:
+    CommandLine|contains:
+      - 'LoadLibraryA'
+      - 'LoadLibraryW'
+      - 'GetProcAddress'
+      - 'LdrLoadDll'
+      - 'LdrGetProcedureAddress'
+      - 'SystemFunction032'
+      - 'NtOpenProcess'
+      - 'NtAllocateVirtualMemory'
+      - 'NtWriteVirtualMemory'
+      - 'NtProtectVirtualMemory'
+      - 'ZwQueryInformationProcess'
+  selection_suspicious_dlls:
+    CommandLine|contains:
+      - 'kernel32.dll'
+      - 'ntdll.dll'
+      - 'advapi32.dll'
+      - 'user32.dll'
+      - 'shell32.dll'
+      - 'wininet.dll'
+      - 'msvcrt.dll'
+      - 'ole32.dll'
+      - 'ws2_32.dll'
+  selection_injection_methods:
+    CommandLine|contains:
+      - 'VirtualAllocEx'
+      - 'CreateRemoteThread'
+      - 'NtQueueApcThread'
+      - 'RtlCreateUserThread'
+      - 'WriteProcessMemory'
+  selection_parent_child:
+    ParentImage|endswith:
+      - '\winword.exe'
+      - '\excel.exe'
+      - '\powerpnt.exe'
+      - '\outlook.exe'
+      - '\onenote.exe'
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\rundll32.exe'
+      - '\wmic.exe'
+  selection_iat_obfuscation:
+    CommandLine|contains:
+      - 'LoadLibraryA'
+      - 'LoadLibraryW'
+      - 'GetProcAddress'
+      - 'VirtualAlloc'
+      - 'VirtualProtect'
+      - 'NtAllocateVirtualMemory'
+      - 'NtProtectVirtualMemory'
+      - 'NtWriteVirtualMemory'
+      - 'ZwQueryInformationProcess'
+      - 'LdrLoadDll'
+      - 'LdrGetProcedureAddress'
+      - 'kernel32.dll'
+      - 'ntdll.dll'
+      - 'advapi32.dll'
+  selection_hash_api_resolution:
+    CommandLine|contains:
+      - 'xor'
+      - 'rol'
+      - 'ror'
+      - 'hash API'
+      - 'SysWhispers'
+      - 'IndirectSyscall'
+      - 'SystemFunction032'
+      - 'CryptHashData'
+  selection_direct_syscalls:
+    CommandLine|contains:
+      - 'syscall'
+      - 'NtQueryInformationProcess'
+      - 'NtSetContextThread'
+      - 'NtSuspendThread'
+      - 'NtResumeThread'
+      - 'NtQueueApcThread'
+  condition: (selection_processes and (selection_dynamic_api_loading or selection_suspicious_dlls or selection_injection_methods or selection_parent_child)) or selection_process and (selection_iat_obfuscation or selection_hash_api_resolution or selection_direct_syscalls)
+falsepositives:
+  - Some legitimate applications use dynamic API resolution, but these should be baselined.
+level: high

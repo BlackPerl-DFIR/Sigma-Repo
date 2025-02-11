@@ -1,0 +1,42 @@
+title: Rare CreateRemoteThread Execution by Source Process
+name: rare_create_remote_thread
+id: 4f878255-53b8-4914-9a7d-4b668bd2ea6a
+status: test
+description: This detection attempts to identify remote process injection by aggregating Sysmon `CreateRemoteThread` events by source process and returns the ones that we observed in only one unique host.
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.defense-evasion
+  - attack.execution
+  - attack.privilege-escalation
+  - attack.t1055
+logsource:
+  category: process_access
+  product: windows
+detection:
+  selection:
+    EventID: 8
+    event.action: "CreateRemoteThread"
+
+  selection_source_process:
+    SourceImage|re:
+      - '^C:\\[Uu][Ss][Ee][Rr][Ss]\\[^\\]+\\.*'  # Normalizing C:\Users\ANYUSER\*
+      - '^C:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*'  # Normalizing C:\ProgramData\*
+      - '^C:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*'  # Normalizing C:\Windows\Temp\*
+
+  condition: selection and selection_source_process
+---
+title: Low Occurrence Rate of CreateRemoteThread by Source Process
+status: test
+correlation:
+    type: event_count
+    rules:
+        - rare_create_remote_thread
+    group-by:
+        - SourceImage
+        - host.id
+    timespan: 7d
+    condition:
+        and:
+            - eq: hosts 1
+            - eq: cc 1

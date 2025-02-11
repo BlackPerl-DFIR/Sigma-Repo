@@ -1,0 +1,43 @@
+title: Rare PE File Creation by Trusted Microsoft Process
+name: rare_pe_creation_by_microsoft_process
+id: 9f3428a2-1a77-4896-b6d4-8b7d2e3c93fa
+status: test
+description: Detects rare PE file creations initiated by trusted Microsoft processes in System32/SysWOW64, occurring less than 10 times on a single host.
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.defense-evasion
+  - attack.execution
+  - attack.t1204
+  - attack.t1036
+logsource:
+  category: file_event
+  product: windows
+detection:
+  selection:
+    event.category: "file"
+    event.action: "creation"
+    file.Ext.header_bytes|startswith: "4d5a"  # Portable Executable (PE) file magic number
+    process.code_signature.status: "trusted"
+    process.code_signature.subject_name|startswith: "Microsoft"
+
+  selection_process_location:
+    process.executable|re:
+      - '^C:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\(System32|SysWOW64)\\[a-zA-Z0-9_]+\.exe'  # Matches C:\Windows\System32\*.exe or C:\Windows\SysWOW64\*.exe
+
+  condition: selection and selection_process_location
+---
+title: Low Occurrence Rate of Rare PE File Creation by Microsoft Process
+status: test
+correlation:
+    type: event_count
+    rules:
+        - rare_pe_creation_by_microsoft_process
+    group-by:
+        - process.executable
+        - host.id
+    timespan: 7d
+    condition:
+        and:
+            - eq: agents 1
+            - lte: occurences 10
