@@ -1,0 +1,48 @@
+title: Detection of Copy, Move, or Delete Operations on RDP Persistent Bitmap Cache Files
+id: 7b3c9a2e-4f5b-4c3e-8b2d-9a1f3e6d7c8a
+status: experimental
+description: Detects attempts to copy, move, or delete RDP persistent bitmap cache files, which may indicate malicious activity targeting RDP session data.
+author: BlackPerl
+date: '2025-01-31'
+tags:
+  - attack.lateral-movement
+  - attack.t1563.002
+logsource:
+  product: windows
+  category: file_event
+detection:
+  selection:
+    TargetFilename|endswith:
+      - '\Cache*.bin'
+      - '\Cache*.bmc'
+    EventID:
+      - 4660  # File Delete
+      - 4663  # File Access (includes Move/Copy/Delete)
+    AccessMask|contains:
+      - '0x10000'  # Delete operation
+      - '0x40000'  # Modify permissions (potential move)
+      - '0x80000'  # Change ownership (potential move)
+      - '0x100000'  # Copy or move operation
+  selection_process:
+    Image|endswith:
+      - "cmd.exe"
+      - "powershell.exe"
+      - "robocopy.exe"
+      - "xcopy.exe"
+      - "explorer.exe"
+  selection_commandline:
+    CommandLine|contains:
+      - "copy"
+      - "move"
+      - "del"
+      - "erase"
+      - "rm"
+      - "rmdir"
+      - "Remove-Item"
+    TargetFilename|endswith:
+      - '\Cache*.bin'
+      - '\Cache*.bmc'
+  condition: selection or (selection_process and selection_commandline)
+falsepositives:
+  - Legitimate administrative actions involving RDP cache files, such as clearing cache for troubleshooting or maintenance.
+level: medium
