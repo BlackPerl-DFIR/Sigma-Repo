@@ -1,0 +1,77 @@
+title: Detect Multiple LSASS Process Dumping Techniques
+id: d12f98a7-3b5f-4f47-b6e3-9df5c6efcf67
+status: experimental
+description: Detects various methods used to dump the LSASS process for credential theft, including Task Manager, Procdump, MiniDump, PowerShell, and direct memory access.
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.credential-access
+  - attack.t1003.001
+  - attack.t1003
+logsource:
+  category: process_access
+  product: windows
+detection:
+  # Task Manager LSASS Dump
+  selection_taskmgr_dump:
+    EventID: 10  # Sysmon Process Access
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess: '0x1fffff'  # Full access (PROCESS_ALL_ACCESS)
+    CallTrace|contains: 'taskmgr.exe'
+
+  # Procdump Dumping LSASS
+  selection_procdump:
+    EventID: 4688  # Process Creation Event
+    NewProcessName|endswith: '\procdump.exe'
+    CommandLine|contains:
+      - '-ma lsass.exe'
+      - '-accepteula'
+
+  # PowerShell-Based LSASS Dumping
+  selection_powershell_dump:
+    EventID: 4688
+    NewProcessName|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+    CommandLine|contains:
+      - 'Out-Minidump'
+      - 'MiniDumpWriteDump'
+      - '[System.Diagnostics.Process]::GetProcessesByName("lsass")'
+      - '[System.Management.Automation.PSMethod]::Invoke'
+
+  # MiniDump (rundll32, PPL bypass)
+  selection_minidump:
+    EventID: 4688
+    NewProcessName|endswith:
+      - '\rundll32.exe'
+      - '\werfault.exe'
+    CommandLine|contains:
+      - 'C:\Windows\System32\dllhost.exe'
+      - 'C:\Windows\System32\comsvcs.dll, MiniDump'
+
+  # Direct Memory Access via API Calls
+  selection_direct_memory_access:
+    EventID: 10  # Sysmon Process Access
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:
+      - '0x1f3fff'  # PROCESS_VM_READ, PROCESS_VM_OPERATION, PROCESS_VM_WRITE
+    CallTrace|contains:
+      - 'ntdll.dll'
+      - 'DbgHelp.dll'
+      - 'ReadProcessMemory'
+      - 'OpenProcess'
+
+  #Process Injection into LSASS
+  selection_process_injection:
+    EventID: 8  # Sysmon Process Injection
+    TargetImage|endswith: '\lsass.exe'
+    CallTrace|contains:
+      - 'CreateRemoteThread'
+      - 'VirtualAllocEx'
+      - 'NtQueueApcThread'
+      - 'WriteProcessMemory'
+
+  condition: selection_taskmgr_dump or selection_procdump or selection_powershell_dump or selection_minidump or selection_direct_memory_access or selection_process_injection
+falsepositives:
+  - Legitimate security tools performing forensic analysis
+level: critical
