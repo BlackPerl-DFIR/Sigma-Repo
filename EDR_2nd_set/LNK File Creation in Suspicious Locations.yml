@@ -1,0 +1,47 @@
+title: LNK File Creation in Suspicious Locations
+id: 2b3c4d5e-6789-01ab-cdef-2345678901gh
+status: experimental
+description: Detects LNK files being created in persistence locations, which may indicate malware persistence and detects execution of LNK files from removable devices, often used in malware propagation.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://attack.mitre.org/techniques/T1091/
+  - https://attack.mitre.org/techniques/T1204/002/
+author: BlackPerl Detection Team
+date: 2025-02-11
+logsource:
+  category: file_event
+  product: windows
+detection:
+  file_creation:
+    TargetFilename|contains:
+      - '\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\'
+      - '\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\'
+      - '\Users\Public\Desktop\'
+      - '\Users\*\Desktop\'
+      - '\Users\*\AppData\Roaming\Microsoft\Windows\Start Menu\'
+      - '\Startup\'
+      - '\Temp\'
+      - '\Downloads\'
+  lnk_file:
+    TargetFilename|endswith: '.lnk'
+  file_execution:
+    FilePath|contains:
+      - 'E:\'
+      - 'F:\'
+      - 'G:\'
+      - 'H:\'
+  condition: (file_creation and lnk_file) or (lnk_file or file_execution)
+fields:
+  - Image
+  - TargetFilename
+  - User
+falsepositives:
+  - Some legitimate applications may create shortcuts for user convenience.
+level: medium
+tags:
+  - attack.persistence
+  - attack.t1547.001
+  - attack.execution
+  - attack.t1204.002
+  - attack.initial_access
+  - attack.t1091

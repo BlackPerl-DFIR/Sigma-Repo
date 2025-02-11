@@ -1,0 +1,88 @@
+title: RDP Session Hijacking Attempt
+id: 33445566-7890-12ab-cdef-334455667788
+status: experimental
+description: Detects suspicious session changes, potential RDP hijacking, and credential theft via LSASS dumping post-login. Monitors lateral movement via PowerShell, PsExec, or WMI. Flags RDP brute-force tools, backdoor modifications (e.g., termsrv.dll, sethc.exe), and known LSASS dumpers. Detects commands or tools used to hijack RDP sessions.
+references:
+  - https://attack.mitre.org/techniques/T1563/002/
+  - https://attack.mitre.org/techniques/T1003/
+  - https://attack.mitre.org/techniques/T1021/001/
+  - https://attack.mitre.org/techniques/T1110/001/
+author: BlackPerl Detection Team
+date: 2025-02-11
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  session_hijack:
+    EventID: 4778
+  rdp_logon:
+    EventID: 4624
+    LogonType: 10
+  lsass_dump:
+    Image|endswith:
+      - '\procdump.exe'
+      - '\mimikatz.exe'
+      - '\taskmgr.exe'
+    CommandLine|contains:
+      - 'lsass'
+  lateral_movement:
+    Image|endswith:
+      - '\psexec.exe'
+      - '\wmic.exe'
+      - '\powershell.exe'
+    CommandLine|contains:
+      - 'Invoke-Command'
+      - 'Enter-PSSession'
+      - 'psexec'
+      - 'wmic /node'
+  selection_suspicious_image:
+    Image|endswith:
+      - '\rdpcrack.exe'
+      - '\rdpbrute.exe'
+      - '\rdpassist.exe'
+      - '\TSgrinder.exe'
+      - '\hydra.exe'
+      - '\termsrv.dll'
+      - '\RDPWrap.dll'
+      - '\sethc.exe'
+      - '\Utilman.exe'
+      - '\mimikatz.exe'
+      - '\procdump.exe'
+      - '\rdrleakdiag.exe'
+  selection_suspicious_commandline:
+    CommandLine|contains:
+      - 'tscon.exe 1 /dest:console'
+      - 'mstscon.exe /shadow'
+      - 'rds-shadow.exe'
+      - 'termsrv.dll modification detected'
+  condition: session_hijack or rdp_logon and (lsass_dump within 5m or lateral_movement within 5m) or selection_suspicious_image or selection_suspicious_commandline
+fields:
+  - EventID
+  - AccountName
+  - SourceIP
+falsepositives:
+  - Normal user session switching in enterprise environments.
+level: high
+tags:
+  - attack.lateral_movement
+  - attack.t1563.002
+  - attack.credential_access
+  - attack.t1003
+  - attack.lateral_movement
+  - attack.t1021.001
+  - attack.t1110.001
+  - attack.persistence
+  
+  ----------------
+ 
+  title: RDP Logon Followed by LSASS Dumping or Lateral Movement
+status: test
+correlation:
+    type: chain
+    rules:
+        - rdp_logon
+        - lsass_dump
+        - lateral_movement
+    timespan: 5m
+    condition:
+        followed_by: 1
