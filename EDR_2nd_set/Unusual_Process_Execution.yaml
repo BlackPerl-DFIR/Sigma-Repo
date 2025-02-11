@@ -1,0 +1,74 @@
+title: Unusual Process Execution - Living-off-the-Land Binaries (LOLBins)
+id: 28b82ed6-879b-4e56-8b1e-7476d4c184dc
+status: experimental
+description: Detects suspicious parent-child process relationships indicative of LOLBins abuse, such as Office apps spawning cmd.exe or powershell.exe.
+references:
+  - https://attack.mitre.org/techniques/T1218/
+  - https://redcanary.com/threat-detection-report/
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.defense-evasion
+  - attack.execution
+  - attack.t1218
+  - attack.t1059.003
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '\winword.exe'
+      - '\excel.exe'
+      - '\powerpnt.exe'
+      - '\outlook.exe'
+      - '\onenote.exe'
+      - '\wordpad.exe'
+      - '\notepad.exe'
+      - '\rundll32.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\regsvr32.exe'
+      - '\wmic.exe'
+      - '\certutil.exe'
+      - '\installutil.exe'
+      - '\msiexec.exe'
+      - '\rundll32.exe'
+      - '\regedit.exe'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\rundll32.exe'
+      - '\schtasks.exe'
+      - '\taskkill.exe'
+      - '\wmic.exe'
+      - '\certutil.exe'
+      - '\regsvr32.exe'
+      - '\installutil.exe'
+  selection_cmdline:
+    CommandLine|contains:
+      - '/c'
+      - '/k'
+      - '-EncodedCommand'
+      - 'Invoke-Expression'
+      - 'Invoke-WebRequest'
+      - 'System.Net.WebClient'
+      - 'IEX'
+      - 'Start-Process'
+      - 'rundll32 javascript'
+      - 'rundll32 shell32'
+      - 'cmd /q /c'
+      - 'cmd /r'
+      - 'wmic process call create'
+      - 'certutil -urlcache'
+      - 'bitsadmin /transfer'
+  condition: selection_parent and selection_child and selection_cmdline
+falsepositives:
+  - Legitimate administrative or automation scripts (should be baselined per environment)
+level: high

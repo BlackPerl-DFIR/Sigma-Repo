@@ -1,0 +1,63 @@
+title: Malicious Document Execution, Suspicious Office Macro Execution (VBA Abuse), Suspicious Embedded Script Execution via Office, Office Exploit Attempt (Equation Editor, OLEObject)
+id: 456e7890-a123-b456-c789-012345678901
+status: experimental
+description: Detects Office macros via executing suspicious commands such as PowerShell, CMD, and WScript and also detects Office exploits using Equation Editor, OLEObject, or shell commands. This rule will also detect if Office documents spawning processes to create and execute script/executable files.
+references:
+  - https://attack.mitre.org/techniques/T1204/002/
+  - https://attack.mitre.org/techniques/T1218/005/
+  - https://attack.mitre.org/techniques/T1203/
+author: BlackPerl
+date: 2025-02-10
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  parent_process:
+    Image|endswith:
+      - '\WINWORD.EXE'
+      - '\EXCEL.EXE'
+      - '\POWERPNT.EXE'
+  suspicious_macro_command:
+    CommandLine|contains:
+      - 'CreateObject("WScript.Shell")'
+      - 'Shell("cmd'
+      - 'Shell("powershell'
+      - 'Shell("mshta'
+      - 'powershell -enc'
+  file_creation_args:
+    CommandLine|contains:
+      - '.exe'
+      - '.dll'
+      - '.bat'
+      - '.vbs'
+      - '.js'
+      - 'echo '
+      - 'copy '
+      - 'move '
+      - 'certutil -decode'
+      - 'certutil -urlcache'
+  child_process:
+    Image|endswith:
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\eqnedt32.exe'
+      - '\cmd.exe'
+      - '\powershell.exe'
+  condition: (parent_process and suspicious_macro_command) or (parent_process and child_process) or (parent_process and child_process and file_creation_args)
+fields:
+  - Image
+  - ParentImage
+  - CommandLine
+  - User
+falsepositives:
+  - Some legitimate macros or automation script trigger.
+level: high
+tags:
+  - attack.execution
+  - attack.t1204.002
+  - attack.execution
+  - attack.defense_evasion
+  - attack.t1218.005
+  - attack.t1203
+  - attack.persistence

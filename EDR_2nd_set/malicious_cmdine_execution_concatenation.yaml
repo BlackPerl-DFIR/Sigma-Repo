@@ -1,0 +1,86 @@
+title: Detection of Obfuscated Scripts Using String Concatenation and suspicious characters
+id: 77b16e2b-5bc2-47b0-bb98-08321078891a
+status: experimental
+description: Detects obfuscated command execution via string concatenation, such as `$x = "po"+"we"+"rshe"+"ll"` used to evade signature-based detection.
+references:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://redcanary.com/threat-detection-report/
+  - https://www.sans.org/blog/detecting-powershell-obfuscation/
+author: BlackPerl
+date: 2025-02-10
+tags:
+  - attack.defense-evasion
+  - attack.execution
+  - attack.t1027.002
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_process:
+    Image|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\mshta.exe'
+      - '\cmd.exe'
+      - '\rundll32.exe'
+  selection_obfuscation:
+    CommandLine|contains:
+      - '"p"+"o"+"w"+"e"+"r"+"s"+"h"+"e"+"l"+"l"' 
+      - '"I"+"E"+"X"'
+      - '"N"+"e"+"t"+"."+"W"+"e"+"b"+"C"+"l"+"i"+"e"+"n"+"t"'
+      - '"D"+"o"+"w"+"n"+"l"+"o"+"a"+"d"+"S"+"t"+"r"+"i"+"n"+"g"'
+      - '"S"+"t"+"a"+"r"+"t"+"-"+"P"+"r"+"o"+"c"+"e"+"s"+"s"'
+      - '"b"+"i"+"t"+"s"+"a"+"d"+"m"+"i"+"n"'
+      - '"c"+"e"+"r"+"t"+"u"+"t"+"i"+"l"'
+      - '"I"+"n"+"v"+"o"+"k"+"e"+"-"+"E"+"x"+"p"+"r"+"e"+"s"+"s"+"i"+"o"+"n"'
+      - '"I"+"n"+"v"+"o"+"k"+"e"+"-"+"W"+"e"+"b"+"R"+"e"+"q"+"u"+"e"+"s"+"t"'
+  selection_suspicious_cmdline_args:
+    CommandLine|re: '^([^^=%![(; ]*[\^=%![(; ]){8,}[^^=%![(; ]*$' # regex below looks for eight or more total instances of the suspicious characters
+    CommandLine|contains:
+      - 'http://'
+      - 'https://'
+      - 'echo'
+      - '||'
+      - 'bypass'
+      - '-exec'
+  selection_amsi_bypass:
+    CommandLine|contains:
+      - '[System.Reflection.Assembly]::Load'
+      - '[Ref].Assembly.GetType(''System.Management.Automation.AmsiUtils'').GetField(''amsiInitFailed'').SetValue($null,$true)'
+      - 'AmsiScanBuffer'
+      - 'bypass AMSI'
+      - 'Reflection.Assembly'
+      - 'System.Runtime.InteropServices.Marshal'
+      - 'System.Management.Automation.AmsiUtils'
+      - 'amsiInitFailed'
+  selection_script_block_logging_bypass:
+    CommandLine|contains:
+      - 'HKLM:\Software\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
+      - 'HKLM:\Software\Policies\Microsoft\Windows\PowerShell\Transcription'
+      - 'Set-MpPreference -DisableRealtimeMonitoring $true'
+      - 'Set-MpPreference -DisableBehaviorMonitoring $true'
+      - 'Set-MpPreference -DisableIOAVProtection $true'
+      - 'Remove-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows Defender" -Name "DisableAntiSpyware"'
+  selection_powershell_downgrade:
+    CommandLine|contains:
+      - '-Version 2'
+      - '-ep bypass'
+      - 'powershell.exe -w hidden -ep bypass'
+      - 'PowerShell -NoProfile -ExecutionPolicy Bypass'
+      - 'iex ((New-Object System.Net.WebClient).DownloadString'
+      - 'mshta vbscript:CreateObject("Wscript.Shell").Run("powershell -w hidden'
+  selection_process_injection:
+    CommandLine|contains:
+      - 'rundll32 kernel32.dll,LoadLibraryA'
+      - 'Invoke-ReflectivePEInjection'
+      - 'VirtualAllocEx'
+      - 'WriteProcessMemory'
+      - 'CreateRemoteThread'
+      - 'NtQueueApcThread'
+      - 'RtlCreateUserThread'
+  condition: (selection_process and selection_obfuscation) or (selection_process and selection_suspicious_cmdline_args) or (selection_process and (selection_amsi_bypass or selection_script_block_logging_bypass or selection_powershell_downgrade or selection_process_injection))
+falsepositives:
+  - Legitimate automation scripts that use string concatenation (should be baselined per environment)
+level: high
