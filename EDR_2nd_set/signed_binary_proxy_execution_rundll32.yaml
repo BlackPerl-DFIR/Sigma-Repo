@@ -1,0 +1,95 @@
+title: Signed Binary Proxy Execution Rundll32
+id: 0e3157b9-8857-4d76-a5d8-0bea721a9b93
+status: experimental
+description: Detects the execution of an INF file using rundll32, which is a technique used for Signed Binary Proxy Execution. This rule specifically monitors for the execution of an INF file located in a path associated with Atomic Red Team test T1218.011.
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1218.011/T1218.011.md
+author: BlackPerl
+date: '2025-02-12'
+tags:
+  - attack.execution
+  - attack.t1218.011
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection1: 
+    CommandLine|contains|all:
+      - ieadvpack.dll
+      - PathToAtomicsFolder\T1218.011\src\T1218.011.inf
+      - LaunchINFSection
+      - rundll32.exe
+      - not_an_scr.scr
+  selection2: # Detection of Malicious INF File Download via PowerShell
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+    CommandLine|contains|all:
+      - Invoke-WebRequest
+      - -OutFile
+      - '.inf'
+  selection3:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+      - \cmd.exe
+    CommandLine|contains|all:
+      - rundll32
+      - 'javascript:'
+      - 'document.write();GetObject('
+      - '.Exec();window.close()'
+  selection4:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+      - \cmd.exe
+    CommandLine|contains|all:
+      - '+String'
+      - 'CreateObject'
+      - 'WScript'
+      - 'Run'
+      - 'vbscript:'
+  selection5:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+      - \cmd.exe
+    CommandLine|contains|all:
+      - 'advpack.dll'
+      - 'LaunchINFSection'
+  selection6:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+      - \cmd.exe
+    CommandLine|contains|all:
+      - 'ieadvpack.dll'
+      - 'LaunchINFSection'
+  selection6:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+      - \cmd.exe
+    CommandLine|contains|all:
+      - 'syssetup.dll'
+      - 'SetupInfObjectInstallAction'
+  selection7:
+    Image|endswith:
+      - \powershell.exe
+      - \pwsh.exe
+      - \cmd.exe
+    CommandLine|contains|all:
+      - 'url.dll'
+      - 'FileProtocolHandler'
+  selection_cmd:
+    CommandLine|contains:
+      - zipfldr.dll,RouteTheCall
+      - setupapi.dll,InstallHinfSection
+      - url.dll,OpenURL
+      - URL.dll,FileProtocolHandler
+      - pcwutl.dll,LaunchApplication
+      - shell32.dll,Control_RunDLL
+  condition: 1 of selection*
+falsepositives:
+  - Legitimate use of rundll32 to execute INF files in non-standard paths, although this is uncommon and should be validated.
+level: high
